@@ -333,7 +333,7 @@ void write_block(int diskn, int blockno, uchar* data) {
 
     virtio_disk_rw(diskn, b, 1);
 
-    printf("\nBlock has been written\n");
+   // printf("\nBlock has been written\n");
 }
 
 void read_block(int diskn, int blockno, uchar* data) {

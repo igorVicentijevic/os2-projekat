@@ -7,58 +7,51 @@ void check_data(uint blocks, uchar *blk, uint block_size);
 int
 main(int argc, char *argv[])
 {
-  //init_raid(RAID1);
 
-  init_raid(RAID0);
+    init_raid(RAID1);
 
-  uint disk_num, block_num, block_size;
-  info_raid(&block_num, &block_size, &disk_num);
-  printf("%d %d %d\n",block_num, block_size, disk_num);
+    uint disk_num, block_num, block_size;
+    info_raid(&block_num, &block_size, &disk_num);
 
-  uchar test[1024]="TEST";
-    write_raid(2,test);
-    uchar test2[1024];
-    read_raid(2,test2);
-    printf("test2: %s",test2);
+    uint blocks = (512 > block_num ? block_num : 512);
 
-  uint blocks = (512 > block_num ? block_num : 512);
-
-  uchar* blk = malloc(block_size);
-  for (uint i = 0; i < blocks; i++) {
-    for (uint j = 0; j < block_size; j++) {
-      blk[j] = j + i;
+    uchar* blk = malloc(block_size);
+    for (uint i = 0; i < blocks; i++) {
+        for (uint j = 0; j < block_size; j++) {
+            blk[j] = j + i;
+        }
+        write_raid(i, blk);
     }
-    //write_raid(i, blk);
-  }
 
-  //check_data(blocks, blk, block_size);
+    check_data(blocks, blk, block_size);
 
-  //disk_fail_raid(2);
+    disk_fail_raid(2);
 
-  //check_data(blocks, blk, block_size);
+    check_data(blocks, blk, block_size);
 
-  //disk_repaired_raid(2);
+    disk_repaired_raid(2);
 
-  //check_data(blocks, blk, block_size);
+    check_data(blocks, blk, block_size);
 
-  //free(blk);
+    free(blk);
 
-  //exit(0);
+    printf("Test finished succesfuly \n");
+    exit(0);
 }
 
 void check_data(uint blocks, uchar *blk, uint block_size)
 {
-  for (uint i = 0; i < blocks; i++)
-  {
-    //read_raid(i, blk);
-    for (uint j = 0; j < block_size; j++)
+    for (uint i = 0; i < blocks; i++)
     {
-      if ((uchar)(j + i) != blk[j])
-      {
-        printf("expected=%d got=%d", j + i, blk[j]);
-        printf("Data in the block %d faulty\n", i);
-        break;
-      }
+        read_raid(i, blk);
+        for (uint j = 0; j < block_size; j++)
+        {
+            if ((uchar)(j + i) != blk[j])
+            {
+                printf("expected=%d got=%d", j + i, blk[j]);
+                printf("Data in the block %d faulty\n", i);
+                break;
+            }
+        }
     }
-  }
 }
