@@ -8,7 +8,7 @@ int
 main(int argc, char *argv[])
 {
 
-    init_raid(RAID1);
+    init_raid(RAID4);
 
     uint disk_num, block_num, block_size;
     info_raid(&block_num, &block_size, &disk_num);
@@ -25,11 +25,11 @@ main(int argc, char *argv[])
 
     check_data(blocks, blk, block_size);
 
-    disk_fail_raid(2);
+    disk_fail_raid(1);
 
     check_data(blocks, blk, block_size);
 
-    disk_repaired_raid(2);
+    disk_repaired_raid(1);
 
     check_data(blocks, blk, block_size);
 
