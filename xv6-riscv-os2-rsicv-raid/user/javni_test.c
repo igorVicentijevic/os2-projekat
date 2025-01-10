@@ -25,11 +25,12 @@ main(int argc, char *argv[])
 
     check_data(blocks, blk, block_size);
 
-    disk_fail_raid(1);
+    disk_fail_raid(2);
+    printf("disk fail\n");
 
     check_data(blocks, blk, block_size);
 
-    disk_repaired_raid(1);
+    disk_repaired_raid(2);
 
     check_data(blocks, blk, block_size);
 

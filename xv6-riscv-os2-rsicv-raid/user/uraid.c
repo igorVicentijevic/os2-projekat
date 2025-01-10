@@ -19,6 +19,7 @@ static struct RAID{
 
 static struct DISK{
     int isOk;
+    int blockInitialized[NUM_OF_BLOCKS_PER_DISK];
 } disks[DISKS];
 
 //INDEKSIRANJE RAID DISKOVA POCINJE OD 1
@@ -36,6 +37,9 @@ int read_raid10(int blkn, uchar* data);
 
 int write_raid4(int blkn, uchar* data);
 int read_raid4(int blkn, uchar* data);
+
+int write_raid5(int blkn, uchar* data);
+int read_raid5(int blkn, uchar* data);
 
 int parityDiskBlockInitialized[NUM_OF_BLOCKS_PER_DISK];
 
@@ -102,6 +106,9 @@ int write_raid(int blkn, uchar* data){
             return write_raid10(blkn,data);
         case RAID4:
             return write_raid4(blkn,data);
+        case RAID5:
+            return write_raid5(blkn,data);
+
         default:
 
 
@@ -122,6 +129,8 @@ int read_raid(int blkn, uchar* data){
             return read_raid10(blkn,data);
         case RAID4:
             return read_raid4(blkn,data);
+        case RAID5:
+            return read_raid5(blkn, data);
         default:
     }
 
@@ -245,8 +254,11 @@ int write_raid4(int blkn, uchar* data){
 
     if(b<0 || b>=raidInfo.numOfBlocksPerDisk) return -1;
 
+   // printf("blkn: %d d: %d b: %d\n",blkn,d,b);
 
-    uchar parityBlock[1024];
+
+    uchar temp[1024];
+    uchar* parityBlock = temp;
 
     uchar oldBlock[1024];
 
@@ -254,26 +266,26 @@ int write_raid4(int blkn, uchar* data){
     rdblk(d+1,b,oldBlock);
 
 
-    for(int i = 0; i < raidInfo.sizeOfBlock; i++){
-        if(!parityDiskBlockInitialized[b]) {
-            parityBlock[i] = data[i];
-            continue;
+    if(!parityDiskBlockInitialized[b]) {
+        parityBlock = data;
+        parityDiskBlockInitialized[b]=1;
+    }
+    else{
+        for(int i = 0; i < raidInfo.sizeOfBlock; i++){
+            parityBlock[i] ^= oldBlock[i]^ (disks[d].blockInitialized[b]?data[i]:0);
+
         }
-        parityBlock[i] ^= oldBlock[i]^data[i];
     }
 
-//    printf("data: %d\n", data[0]);
-//    printf("parityblock: %d\n", parityBlock[0]);
+    //TODO: ne radi kad se prvi put pokrene
+    disks[d].blockInitialized[b]=1;
 
     wrtblk(d+1,b,data);
     wrtblk(parityDisk+1,b,parityBlock);
 
-
-
-
     return 0;
 }
-int restore_data_raid4(int faultyDisk, int blk,uchar* data){
+int restore_data_raid4(int faultyDisk, int blk, uchar* data){
 
     uchar diskBlock[DISKS][BSIZE];  //TODO PREPRAVI DA NE KORISTIS NJIHOVE MAKROE
 
@@ -289,9 +301,17 @@ int restore_data_raid4(int faultyDisk, int blk,uchar* data){
 
     for(int i = 0; i<raidInfo.sizeOfBlock; i++){
         for(int j = 1; j<=raidInfo.numOfDisks;j++){
-            if(j == faultyDisk+1) continue;
+            if(j == faultyDisk+1){
+              //  printf("_ ");
+                continue;
+            }
             data[i] ^= diskBlock[j-1][i];
+
+            //printf("%d ",diskBlock[j-1][i]);
+
         }
+
+        //printf("recovered: %d\n",data[i]);
     }
 
     return 0;
@@ -306,6 +326,82 @@ int read_raid4(int blkn, uchar* data){
     int b = blkn/numOfUsableDisks;
 
     if(b<0 || b>=raidInfo.numOfBlocksPerDisk) return -1;
+
+    if(!disks[d].isOk){
+        //printf("Restore data\n");
+        return restore_data_raid4(d,b,data);
+    }
+
+    rdblk(d+1,b,data);
+
+
+
+    return 0;
+}
+
+int getParityDiskRaid5(int blkn){
+    int b = blkn/(raidInfo.numOfDisks-1);
+    return b%raidInfo.numOfDisks;
+}
+
+int write_raid5(int blkn, uchar* data){
+
+    int b = blkn/(raidInfo.numOfDisks-1);
+    int d = blkn%(raidInfo.numOfDisks-1);
+
+    int parityDisk= getParityDiskRaid5(blkn);
+
+    if(d >= parityDisk) {
+        d++;
+    }
+
+    if(b < 0 || b>= raidInfo.numOfBlocksPerDisk) return -1;
+
+    //printf("blkn: %d b:%d pd:%d d:%d\n",blkn,b,parityDisk,d);
+
+
+    uchar temp[1024];
+    uchar* parityBlock = temp;
+
+    uchar oldBlock[1024];
+
+    rdblk(parityDisk+1,b, parityBlock);
+
+    rdblk(d+1,b,oldBlock);
+
+
+    if(!parityDiskBlockInitialized[b]) {
+        parityBlock = data;
+        parityDiskBlockInitialized[b]=1;
+    }
+    else{
+
+        for(int i = 0; i < raidInfo.sizeOfBlock; i++){
+            parityBlock[i] ^= oldBlock[i]^ (disks[d].blockInitialized[b]?data[i]:0);
+
+        }
+    }
+
+    disks[d].blockInitialized[b]=1;
+
+
+    wrtblk(d+1,b,data);
+    wrtblk(parityDisk+1,b,parityBlock);
+    //printf("Block %d ihas been written!\n",blkn);
+    return 0;
+}
+int read_raid5(int blkn, uchar* data){
+
+    int b = blkn/(raidInfo.numOfDisks-1);
+    int d = blkn%(raidInfo.numOfDisks-1);
+
+    int parityDisk= getParityDiskRaid5(blkn);
+
+    if(d >= parityDisk) {
+        d++;
+    }
+
+    if(b < 0 || b>= raidInfo.numOfBlocksPerDisk) return -1;
 
     if(!disks[d].isOk){
         //printf("Restore data\n");
