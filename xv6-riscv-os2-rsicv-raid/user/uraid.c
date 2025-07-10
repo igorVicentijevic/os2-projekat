@@ -18,9 +18,14 @@ static struct RAID{
 } raidInfo;
 
 static struct DISK{
-    int isOk;
-    int blockInitialized[NUM_OF_BLOCKS_PER_DISK];
+    char isOk;
+    char blockInitialized[NUM_OF_BLOCKS_PER_DISK];
 } disks[DISKS];
+
+typedef struct Desc{
+    struct RAID raidInfo;
+    struct DISK disk;
+} DiskDesc;
 
 //static int parityDiskBlockInitialized[NUM_OF_BLOCKS_PER_DISK];
 
@@ -55,6 +60,18 @@ int init_raid(enum RAID_TYPE raid){
         disks[i].isOk = 1;
     }
 
+    //printf("%d %d %d\n",sizeof(raidInfo),sizeof(disks[0]), (sizeof(raidInfo)+sizeof(disks[0]))/BSIZE);
+
+
+//    int raidDataSizeInBlocks = (sizeof(raidInfo)+sizeof(disks[0]))/BSIZE+1;
+//
+//
+//    for(int i = 0; i < raidInfo.numOfDisks;i++){
+//        DiskDesc desc;
+//        desc.raidInfo = raidInfo;
+//        desc.disk = disks[i];
+//        printf("%d\n",sizeof(desc));
+//    }
 
 
 
