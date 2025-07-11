@@ -8,11 +8,11 @@ int
 main(int argc, char *argv[])
 {
 
-    init_raid(RAID5);
+    //init_raid(RAID5);
 
     uint disk_num, block_num, block_size;
     info_raid(&block_num, &block_size, &disk_num);
-
+    printf("%d %d %d", disk_num, block_num, block_size);
     uint blocks = (512 > block_num ? block_num : 512);
 
     uchar* blk = malloc(block_size);
@@ -22,7 +22,6 @@ main(int argc, char *argv[])
         }
         write_raid(i, blk);
     }
-
     check_data(blocks, blk, block_size);
 
     disk_fail_raid(2);
@@ -38,6 +37,7 @@ main(int argc, char *argv[])
 
     printf("Test finished succesfuly \n");
     exit(0);
+
 }
 
 void check_data(uint blocks, uchar *blk, uint block_size)

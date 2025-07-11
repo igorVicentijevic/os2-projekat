@@ -4,8 +4,9 @@
 #include "user/user.h"
 
 #define SIZE_OF_DISK_MB 128UL
-#define NUM_OF_BLOCKS_PER_DISK (SIZE_OF_DISK_MB * 1000000)/BSIZE
-
+#define SIZE_OF_DISK_BYTES (SIZE_OF_DISK_MB * 1024UL * 1024UL)
+#define NUM_OF_BLOCKS_PER_DISK (SIZE_OF_DISK_BYTES / BSIZE - 1)
+#define CONFIGURATION_BLOCK_LOCATION NUM_OF_BLOCKS_PER_DISK-1 //location of a last block
 
 static struct RAID{
     enum RAID_TYPE raidType;
@@ -29,7 +30,7 @@ typedef struct Desc{
 
 //static int parityDiskBlockInitialized[NUM_OF_BLOCKS_PER_DISK];
 
-//INDEKSIRANJE RAID DISKOVA POCINJE OD 1
+//INDEKSIRANJE RAID DISKOVA POCINJE OD 1 !!!!!!!!!!!!!!!!!!!!!!
 
 
 int write_raid0(int blkn, uchar* data);
@@ -47,6 +48,22 @@ int read_raid4(int blkn, uchar* data);
 int write_raid5(int blkn, uchar* data);
 int read_raid5(int blkn, uchar* data);
 
+void updateConfig(){
+	uchar configBlock[BSIZE];
+
+	memcpy(configBlock, &raidInfo, sizeof(struct RAID));
+	for (int i = 1; i <= DISKS; i++) {
+		wrtblk(i,CONFIGURATION_BLOCK_LOCATION,configBlock);
+	}
+}
+
+void pullConfig(){
+
+	uchar configBlock[BSIZE];
+	rdblk(1,CONFIGURATION_BLOCK_LOCATION,configBlock);
+	memcpy(&raidInfo, configBlock, sizeof(struct RAID));
+
+}
 
 
 int init_raid(enum RAID_TYPE raid){
@@ -59,6 +76,9 @@ int init_raid(enum RAID_TYPE raid){
     for(int i = 0; i < DISKS; i++){
         disks[i].isOk = 1;
     }
+
+	updateConfig();
+
 
     //printf("%d %d %d\n",sizeof(raidInfo),sizeof(disks[0]), (sizeof(raidInfo)+sizeof(disks[0]))/BSIZE);
 
@@ -89,10 +109,13 @@ int init_raid(enum RAID_TYPE raid){
 
 int destroy_raid(){
     raidInfo.isInitialized = 0;
+	updateConfig();
     return 0;
 }
 
 int info_raid(uint *blkn, uint *blks, uint *diskn){
+	if(!raidInfo.isInitialized) pullConfig();
+
     if(!raidInfo.isInitialized) return -1;
 
     *blkn = raidInfo.numOfBlocksPerDisk;
@@ -112,7 +135,7 @@ int disk_repaired_raid(int diskn){
 }
 
 int write_raid(int blkn, uchar* data){
-
+	if(raidInfo.isInitialized==0) pullConfig();
     if(raidInfo.isInitialized==0) return -1;
 
     switch(raidInfo.raidType){
@@ -136,6 +159,7 @@ int write_raid(int blkn, uchar* data){
 }
 
 int read_raid(int blkn, uchar* data){
+	if(raidInfo.isInitialized==0) pullConfig();
     if(raidInfo.isInitialized==0) return -1;
 
     switch(raidInfo.raidType){
@@ -307,6 +331,8 @@ int write_raid4(int blkn, uchar* data){
 
 }
 int restore_data(int faultyDisk, int blk, uchar* data){
+
+
 
     uchar diskBlock[DISKS][BSIZE];  //TODO PREPRAVI DA NE KORISTIS NJIHOVE MAKROE
 
