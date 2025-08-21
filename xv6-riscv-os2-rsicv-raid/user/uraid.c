@@ -20,6 +20,7 @@ static struct RAID{
 
 static struct DISK{
     char isOk;
+	char isLastRead;
     char blockInitialized[NUM_OF_BLOCKS_PER_DISK];
 } disks[DISKS];
 
@@ -138,6 +139,7 @@ int write_raid(int blkn, uchar* data){
 	if(raidInfo.isInitialized==0) pullConfig();
     if(raidInfo.isInitialized==0) return -1;
 
+
     switch(raidInfo.raidType){
         case RAID0:
             return write_raid0(blkn,data);
@@ -183,6 +185,8 @@ int write_raid0(int blkn, uchar* data){
     int d = blkn% raidInfo.numOfDisks;
     int b = blkn / raidInfo.numOfDisks;
 
+	if(!disks[d].isOk) return -1;
+
 
     if(b >= raidInfo.numOfBlocksPerDisk) return -2;
 
@@ -194,6 +198,7 @@ int read_raid0(int blkn, uchar* data){
     int d = blkn% raidInfo.numOfDisks;
     int b = blkn / raidInfo.numOfDisks;
 
+	if(!disks[d].isOk) return -1;
     if(b >= raidInfo.numOfBlocksPerDisk) return -2;
 
     rdblk(d+1,b,data);
@@ -269,15 +274,17 @@ int read_raid10(int blkn, uchar* data) {
     int b = blkn / getNumOfRaid10Pairs();
     //TODO funkcionalnost za naizmenicno citanje sa diskova
 
+
     if (b < 0 || b >= raidInfo.numOfBlocksPerDisk) return -1;
 
     int ret = -1;
     if (disks[d1].isOk) {
         rdblk(d1 + 1, b, data);
-        ret = 0;
+
+		return 0;
     }
 
-    if (disks[d1].isOk) {
+    if (disks[d2].isOk) {
         rdblk(d2 + 1, b, data);
         ret = 0;
     }
@@ -403,9 +410,6 @@ int write_raid5(int blkn, uchar* data){
     }
 
     if(b < 0 || b>= raidInfo.numOfBlocksPerDisk) return -1;
-
-    //printf("blkn: %d b:%d pd:%d d:%d\n",blkn,b,parityDisk,d);
-
 
     return write_data_raid4_raid5(parityDisk,d,b,data);
 }

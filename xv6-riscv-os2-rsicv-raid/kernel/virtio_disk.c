@@ -333,12 +333,11 @@ void write_block(int diskn, int blockno, uchar* data) {
 
     virtio_disk_rw(diskn, b, 1);
 
-   //s printf("\nBlock has been written\n");
+   // printf("\nBlock has been written\n");
 }
 
 void read_block(int diskn, int blockno, uchar* data) {
-
-struct buf *b = transfer_buffer[diskn];
+    struct buf *b = transfer_buffer[diskn];
     b->blockno = blockno;
 
     virtio_disk_rw(diskn, b, 0);

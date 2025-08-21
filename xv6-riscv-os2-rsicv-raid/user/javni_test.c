@@ -8,7 +8,9 @@ int
 main(int argc, char *argv[])
 {
 
-    //init_raid(RAID5);
+//    init_raid(RAID5);
+    init_raid(RAID1);
+
 
     uint disk_num, block_num, block_size;
     info_raid(&block_num, &block_size, &disk_num);
@@ -24,8 +26,10 @@ main(int argc, char *argv[])
     }
     check_data(blocks, blk, block_size);
 
-    disk_fail_raid(2);
-    printf("disk fail\n");
+	disk_fail_raid(2);
+	disk_fail_raid(1);
+
+    printf("\ndisk fail\n");
 
     check_data(blocks, blk, block_size);
 
@@ -42,17 +46,22 @@ main(int argc, char *argv[])
 
 void check_data(uint blocks, uchar *blk, uint block_size)
 {
+	//int cnt = 0;
     for (uint i = 0; i < blocks; i++)
     {
         read_raid(i, blk);
         for (uint j = 0; j < block_size; j++)
         {
+			//printf("\n%d\n",blk[j]);
             if ((uchar)(j + i) != blk[j])
             {
+				//cnt++;
                 printf("expected=%d got=%d", j + i, blk[j]);
                 printf("Data in the block %d faulty\n", i);
                 break;
             }
         }
     }
+
+	//printf("Num of failed blks: %d\n", cnt);
 }
